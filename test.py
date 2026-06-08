@@ -3,78 +3,46 @@ import httpx
 
 from window2 import window2
 
-PRIMARY   = "#6A1B9A"
-ACCENT    = "#AB47BC"
-PINK_BTN  = "#E91E8C"
-SUCCESS   = "#E91E8C"
-ROW_ODD   = "#F3E5F5"
-ROW_EVEN  = "#FFFFFF"
-HEADER_BG = "#7B1FA2"
+APPBAR_BG = "#F9A825"
+PAGE_BG   = "#FEF5DB"
+HEADER_BG = "#373747"
+BTN_COLOR = "#FFFFFF"
 TEXT_DK   = "#212121"
 TEXT_SEC  = "#757575"
-API_LABEL = "#E91E8C"
+ROW_ODD   = "#F5F5F5"
+ROW_EVEN  = "#FFFFFF"
 
-BASE_URL  = "http://127.0.0.1:8000"
+BASE_URL = "http://127.0.0.1:8000"
 
-COL_STYLE = ft.TextStyle(color="white", weight=ft.FontWeight.BOLD, size=13)
-
-
-def make_tf(label):
-    return ft.TextField(
-        label=label,
-        expand=True,
-        border_color=ACCENT,
-        focused_border_color=PRIMARY,
-        text_size=13,
-        color=TEXT_DK,
-        cursor_color=PRIMARY,
-        label_style=ft.TextStyle(color="#9E9E9E"),
-    )
+COL_STYLE = ft.TextStyle(color=BTN_COLOR, weight=ft.FontWeight.BOLD, size=13)
+DRV_COLS  = ["DriverID", "FullName", "Phone", "VehicleType"]
 
 
-def api_get():
+def api_get_drivers():
     try:
-        r = httpx.get(f"{BASE_URL}/languages", timeout=5)
+        r = httpx.get(f"{BASE_URL}/drivers", timeout=5)
         r.raise_for_status()
         return r.json(), None
     except httpx.ConnectError:
-        return None, "Server bağlantısı yoxdur. api.py-ni işlət."
+        return None, "Server bağlantisi yoxdur. api.py-ni işlət."
     except Exception as ex:
         return None, str(ex)
 
 
-def api_post(payload: dict):
+def api_get_vehicle_types():
     try:
-        r = httpx.post(f"{BASE_URL}/languages", json=payload, timeout=5)
-        if r.status_code == 400:
-            return None, r.json().get("detail", "Xəta")
+        r = httpx.get(f"{BASE_URL}/vehicle-types", timeout=5)
         r.raise_for_status()
         return r.json(), None
-    except httpx.ConnectError:
-        return None, "Server bağlantısı yoxdur."
-    except Exception as ex:
-        return None, str(ex)
+    except Exception:
+        return None, None
 
 
-def api_delete(lang_id: int):
-    try:
-        r = httpx.delete(f"{BASE_URL}/languages/{lang_id}", timeout=5)
-        if r.status_code == 404:
-            return None, r.json().get("detail", "Tapılmadı")
-        r.raise_for_status()
-        return r.json(), None
-    except httpx.ConnectError:
-        return None, "Server bağlantısı yoxdur."
-    except Exception as ex:
-        return None, str(ex)
+# WINDOW 1
 
-
-# ═══════════════════════════════════════════════════════════════
-# WINDOW 1 — Main
-# ═══════════════════════════════════════════════════════════════
 def window1(page: ft.Page, go_to_add):
 
-    bs_title    = ft.Text("", color=PRIMARY, weight=ft.FontWeight.BOLD, size=14)
+    bs_title    = ft.Text("", color=BTN_COLOR, weight=ft.FontWeight.BOLD, size=14)
     bs_subtitle = ft.Text("", color=TEXT_DK, size=13)
     bs_hint     = ft.Text("Tap drag handle to expand",
                           color=TEXT_SEC, italic=True, size=11)
@@ -94,29 +62,28 @@ def window1(page: ft.Page, go_to_add):
                 bs_hint,
             ]),
         ),
-        on_dismiss=lambda e: None,
+        on_dismiss=lambda _: None,
     )
 
     def open_bs(row_data: dict):
-        bs_title.value    = "BOTTOM SHEET"
-        bs_subtitle.value = (f"{row_data['name']} · {row_data['difficulty']} · "
-                             f"{row_data['total']} lessons total")
+        bs_title.value    = "DRIVER INFO"
+        bs_subtitle.value = (f"{row_data['FullName']}  ·  {row_data['Phone']}  ·  "
+                             f"{row_data['VehicleType']}")
         page.show_dialog(bottom_sheet)
 
-    def build_clickable_table(rows):
+    def build_driver_table(rows):
         data_rows = []
-        for i, r in enumerate(rows):
-            rd = r
+        for i, rd in enumerate(rows):
             data_rows.append(
                 ft.DataRow(
                     cells=[
-                        ft.DataCell(ft.Text(str(rd["id"]),    color=TEXT_DK, size=13)),
-                        ft.DataCell(ft.Text(rd["name"],       color=TEXT_DK, size=13)),
-                        ft.DataCell(ft.Text(rd["difficulty"], color=TEXT_DK, size=13)),
-                        ft.DataCell(ft.Text(str(rd["total"]), color=TEXT_DK, size=13)),
+                        ft.DataCell(ft.Text(str(rd["DriverID"]),    color=TEXT_DK, size=13)),
+                        ft.DataCell(ft.Text(rd["FullName"],         color=TEXT_DK, size=13)),
+                        ft.DataCell(ft.Text(rd["Phone"],            color=TEXT_DK, size=13)),
+                        ft.DataCell(ft.Text(rd["VehicleType"],      color=TEXT_DK, size=13)),
                     ],
                     color=ROW_ODD if i % 2 == 0 else ROW_EVEN,
-                    on_select_change=lambda e, d=rd: open_bs(d),
+                    on_select_change=lambda _, d=rd: open_bs(d),
                 )
             )
         return ft.DataTable(
@@ -129,104 +96,106 @@ def window1(page: ft.Page, go_to_add):
             data_row_min_height=36,
             data_row_max_height=48,
             column_spacing=16,
-            columns=[
-                ft.DataColumn(ft.Text("ID",         style=COL_STYLE)),
-                ft.DataColumn(ft.Text("Name",       style=COL_STYLE)),
-                ft.DataColumn(ft.Text("Difficulty", style=COL_STYLE)),
-                ft.DataColumn(ft.Text("Lessons",    style=COL_STYLE)),
-            ],
+            columns=[ft.DataColumn(ft.Text(c, style=COL_STYLE)) for c in DRV_COLS],
             rows=data_rows,
         )
 
-    table_col = ft.Ref[ft.Column]()
-    body      = ft.Ref[ft.Container]()
-    err_text  = ft.Ref[ft.Text]()
+    table_col  = ft.Ref[ft.Column]()
+    err_text   = ft.Ref[ft.Text]()
+    body       = ft.Ref[ft.Container]()
+    vt_text    = ft.Ref[ft.Text]()
 
-    def refresh_main_table():
-        data, err = api_get()
+    def refresh_drivers():
+        data, err = api_get_drivers()
         if err:
             if err_text.current:
-                err_text.current.value = err
+                err_text.current.value   = err
                 err_text.current.visible = True
         else:
             if err_text.current:
                 err_text.current.visible = False
             if table_col.current:
-                table_col.current.controls = [build_clickable_table(data)]
+                table_col.current.controls = [build_driver_table(data or [])]
+        vd, _ = api_get_vehicle_types()
+        if vd and vt_text.current:
+            vt_text.current.value = f"Vehicle types : {vd['count']}  ({', '.join(vd['types'])})"
         page.update()
 
-    def languages_view():
-        init_data, init_err = api_get()
-        init_rows = init_data if init_data else []
-
+    def drivers_view():
+        init_data, init_err = api_get_drivers()
+        vd, _ = api_get_vehicle_types()
+        vt_label = f"Vehicle types : {vd['count']}  ({', '.join(vd['types'])})" if vd else "Vehicle types : 0"
         return ft.Column(
             expand=True,
             scroll=ft.ScrollMode.AUTO,
             spacing=8,
             controls=[
-                ft.Container(
-                    bgcolor="#FCE4EC", border_radius=6,
-                    padding=ft.Padding.symmetric(horizontal=10, vertical=6),
-                    content=ft.Text("GET /languages  →  loads data on open",
-                                    color=PINK_BTN, size=11),
-                ),
-                ft.ProgressBar(value=1, color=PRIMARY, bgcolor="#E1BEE7"),
-
                 ft.Text(
                     ref=err_text,
                     value=init_err or "",
                     color="#C62828", size=12,
                     visible=bool(init_err),
                 ),
-
                 ft.Container(
-                    border=ft.Border.all(1, "#E1BEE7"),
+                    border=ft.Border.all(1, HEADER_BG),
                     border_radius=8,
                     clip_behavior=ft.ClipBehavior.HARD_EDGE,
                     content=ft.Row(expand=True, controls=[
                         ft.Column(
                             ref=table_col,
                             expand=True,
-                            controls=[build_clickable_table(init_rows)],
+                            controls=[build_driver_table(init_data or [])],
                         ),
                     ]),
+                ),
+                ft.Container(
+                    padding=ft.Padding.symmetric(horizontal=14, vertical=10),
+                    border=ft.Border.all(1, "#DBDBDB"),
+                    border_radius=8,
+                    bgcolor=ROW_ODD,
+                    content=ft.Column(
+                        spacing=4,
+                        controls=[
+                            ft.Text("Available Vehicle Types", color=TEXT_SEC, size=11),
+                            ft.Text(
+                                ref=vt_text,
+                                value=vt_label,
+                                color=TEXT_DK,
+                                size=13,
+                                weight=ft.FontWeight.BOLD,
+                            ),
+                        ],
+                    ),
                 ),
             ],
         )
 
-    def progress_view():
+    def placeholder_view(icon, title, subtitle):
         return ft.Column(
             horizontal_alignment=ft.CrossAxisAlignment.CENTER,
             spacing=12,
             controls=[
                 ft.Container(height=40),
-                ft.Icon(ft.Icons.BAR_CHART, size=56, color=ACCENT),
-                ft.Text("My Progress", size=18, color=TEXT_SEC),
-                ft.Text("İstifadəçinin tərəqqisi burada olacaq.",
-                        color=TEXT_SEC, size=13, text_align=ft.TextAlign.CENTER),
+                ft.Icon(icon, size=56, color=TEXT_SEC),
+                ft.Text(title,    size=18, color=TEXT_DK),
+                ft.Text(subtitle, color=TEXT_SEC, size=13,
+                        text_align=ft.TextAlign.CENTER),
             ],
         )
 
-    def lessons_view():
-        return ft.Column(
-            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-            spacing=12,
-            controls=[
-                ft.Container(height=40),
-                ft.Icon(ft.Icons.SCHOOL, size=56, color=ACCENT),
-                ft.Text("Lessons", size=18, color=TEXT_SEC),
-                ft.Text("Dərslər siyahısı burada olacaq.",
-                        color=TEXT_SEC, size=13, text_align=ft.TextAlign.CENTER),
-            ],
-        )
-
-    views = [languages_view, progress_view, lessons_view]
+    views = [
+        drivers_view,
+        lambda: placeholder_view(ft.Icons.DIRECTIONS_CAR, "My Trips",
+                                 "Sürüşləriniz burada görünəcək."),
+        lambda: placeholder_view(ft.Icons.PERSON, "Profile",
+                                 "Profil məlumatlariniz burada olacaq."),
+    ]
 
     def on_nav_change(e):
         idx = e.control.selected_index
         body.current.content = views[idx]()
         if idx == 0:
-            refresh_main_table()
+            refresh_drivers()
         else:
             page.update()
 
@@ -235,14 +204,15 @@ def window1(page: ft.Page, go_to_add):
         spacing=0,
         controls=[
             ft.Container(
-                bgcolor=PRIMARY,
+                bgcolor=APPBAR_BG,
                 padding=ft.Padding.symmetric(horizontal=16, vertical=12),
+                shadow=ft.BoxShadow(blur_radius=4, color="#22000000", offset=ft.Offset(0, 2)),
                 content=ft.Row([
-                    ft.Text("LinguaApp", color="white", size=18,
+                    ft.Text("TaxiGo", color="white", size=18,
                             weight=ft.FontWeight.BOLD, expand=True),
-                    ft.IconButton(icon=ft.Icons.MENU, icon_color="white",
+                    ft.IconButton(icon=ft.Icons.ADD_CIRCLE_OUTLINE, icon_color=BTN_COLOR,
                                   on_click=lambda _: go_to_add(),
-                                  tooltip="Add Language"),
+                                  tooltip="Manage Drivers"),
                 ]),
             ),
 
@@ -250,33 +220,45 @@ def window1(page: ft.Page, go_to_add):
                 ref=body,
                 expand=True,
                 padding=ft.Padding.all(14),
-                content=languages_view(),
+                bgcolor=PAGE_BG,
+                content=drivers_view(),
             ),
 
             ft.NavigationBar(
                 selected_index=0,
                 bgcolor="white",
-                indicator_color=ft.Colors.PURPLE_100,
+                indicator_color=ft.Colors.GREY_200,
                 on_change=on_nav_change,
                 destinations=[
-                    ft.NavigationBarDestination(icon=ft.Icons.LANGUAGE,    label="Languages"),
-                    ft.NavigationBarDestination(icon=ft.Icons.LEADERBOARD, label="My Progress"),
-                    ft.NavigationBarDestination(icon=ft.Icons.BOOK,        label="Lessons"),
+                    ft.NavigationBarDestination(
+                        icon=ft.Icons.DIRECTIONS_CAR_OUTLINED,
+                        selected_icon=ft.Icons.DIRECTIONS_CAR,
+                        label="Book Ride",
+                    ),
+                    ft.NavigationBarDestination(
+                        icon=ft.Icons.RECEIPT_LONG_OUTLINED,
+                        selected_icon=ft.Icons.RECEIPT_LONG,
+                        label="My Trips",
+                    ),
+                    ft.NavigationBarDestination(
+                        icon=ft.Icons.PERSON_OUTLINE,
+                        selected_icon=ft.Icons.PERSON,
+                        label="Profile",
+                    ),
                 ],
             ),
         ],
     )
 
-    return content, refresh_main_table
+    return content, refresh_drivers
 
 
-# ═══════════════════════════════════════════════════════════════
 # MAIN
-# ═══════════════════════════════════════════════════════════════
+
 def main(page: ft.Page):
-    page.title    = "LinguaApp"
-    page.bgcolor  = "#F8F6FF"
-    page.padding  = 0
+    page.title   = "RideApp"
+    page.bgcolor = PAGE_BG
+    page.padding = 0
     page.window.width     = 420
     page.window.height    = 780
     page.window.resizable = True
